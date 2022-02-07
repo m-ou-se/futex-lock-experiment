@@ -85,9 +85,11 @@ fn lock_contended(futex: &AtomicI32) {
 impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     fn drop(&mut self) {
         if self.mutex.futex.swap(0, Release) == 2 {
-            // TODO: This could just wake one thread, but then we need to make
-            // sure the mutex will not be locked as uncontended (1) afterwards.
-            futex_wake(&self.mutex.futex, i32::MAX);
+            // We only wake up one thread. When that thread locks the mutex, it
+            // will mark the mutex as contended (2) (see lock_contended above),
+            // which makes sure that any other waiting threads will also be
+            // woken up eventually.
+            futex_wake(&self.mutex.futex, 1);
         }
     }
 }
